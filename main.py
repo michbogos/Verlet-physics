@@ -1,6 +1,8 @@
 import pygame
 import math
 import random
+import time
+
 
 pygame.init()
 
@@ -96,6 +98,7 @@ while running:
     dt = clock.tick(30)
     checks = 0
     for step in range(SUBSTEPS):
+        collision1 = time.perf_counter()
         checks = 0
         for row in range(1, len(grid)-1):
             for cell in range(1, len(grid[row])-1):
@@ -106,14 +109,18 @@ while running:
                             for ball2 in grid[row+dx][cell+dy]:
                                 checks += 1
                                 ball1.solve_collision(ball2)
+        collision2 = time.perf_counter()
 
+        rest1 = time.perf_counter()
         for row in range(len(grid)):
             for cell in range(len(grid[row])):
                 for ball in range(len(grid[row][cell])):
                     grid[row][cell][ball].accelerate()
                     grid[row][cell][ball].solve_constraint()
                     grid[row][cell][ball].integrate(dt/1000/SUBSTEPS)
-        
+        rest2 = time.perf_counter()
+
+        grid1 = time.perf_counter()
         row = 0
         while row < len(grid):
             cell = 0
@@ -130,6 +137,7 @@ while running:
                     ball += 1
                 cell += 1
             row += 1
+        grid2 = time.perf_counter()
 
 
     display.fill((255, 255, 255))
@@ -142,10 +150,16 @@ while running:
     #     for cell in range(len(grid[row])):
     #         if len(grid[row][cell]) > 0:
     #             pygame.draw.rect(display, (0, 255, 255), (row*GRID_SUBDIVISIONS, cell*GRID_SUBDIVISIONS, GRID_SUBDIVISIONS, GRID_SUBDIVISIONS))
+    draw1 = time.perf_counter()
     for row in grid:
         for cell in row:
             for ball in cell:
                 pygame.draw.circle(display, ball.color, ball.pos_current, RADIUS)
     pygame.display.flip()
+    draw2 = time.perf_counter()
     if frame%100 == 0:
         print(f"{object_count}: {checks}")
+        print(f"Collision_time: {collision2-collision1}")
+        print(f"Other_time: {rest2-rest1}")
+        print(f"Grid: {grid2-grid1}")
+        print(f"Draw: {draw2-draw1}")
