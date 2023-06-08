@@ -3,12 +3,13 @@
 #include<iostream>
 #include<vector>
 #include<list>
+#include<thread>
 
 #define SUBSTEPS 8
 #define SUB_COEFF 1/SUBSTEPS/SUBSTEPS
 #define CELL_SIZE 4
 
-float radius = 2.0f;
+float radius = 2;
 int frame = 0;
 
 struct Ball{
@@ -20,10 +21,57 @@ struct Ball{
 
 std::vector<std::vector<std::list<Ball>>> grid(700/CELL_SIZE, std::vector<std::list<Ball>>(700/CELL_SIZE, std::list<Ball>()));
 
+void collide1(){
+    for(int row = 1; row < (700/CELL_SIZE/2); row++){
+                for(int cell = 1; cell < (700/CELL_SIZE)-1; cell++){
+                    for(int dx = -1; dx <= 1; dx++){
+                        for(int dy = -1; dy <= 1; dy++){
+                            for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
+                                for(auto b2 = grid[row][cell].begin(); b2 != grid[row][cell].end(); b2++){
+                                    if(b1->pos != b2->pos){
+                                        olc::vf2d axis = b1->pos-b2->pos;
+                                        float dist = axis.mag();
+                                        if(dist < 2*radius){
+                                            olc::vf2d n = axis.norm();
+                                            b1->pos += 0.5*n*(2*radius-dist);
+                                            b2->pos -= 0.5*n*(2*radius-dist);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+}
+
+void collide2(){
+    for(int row = (700/CELL_SIZE/2); row < (700/CELL_SIZE)-1; row++){
+                for(int cell = 1; cell < (700/CELL_SIZE)-1; cell++){
+                    for(int dx = -1; dx <= 1; dx++){
+                        for(int dy = -1; dy <= 1; dy++){
+                            for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
+                                for(auto b2 = grid[row][cell].begin(); b2 != grid[row][cell].end(); b2++){
+                                    if(b1->pos != b2->pos){
+                                        olc::vf2d axis = b1->pos-b2->pos;
+                                        float dist = axis.mag();
+                                        if(dist < 2*radius){
+                                            olc::vf2d n = axis.norm();
+                                            b1->pos += 0.5*n*(2*radius-dist);
+                                            b2->pos -= 0.5*n*(2*radius-dist);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+}
+
 class Example : public olc::PixelGameEngine
 { 
 public:
-    std::vector<Ball> balls; 
 public:
 	Example()
 	{
@@ -66,27 +114,11 @@ public:
                 }
             }
 
-            for(int row = 1; row < (700/CELL_SIZE)-1; row++){
-                for(int cell = 1; cell < (700/CELL_SIZE)-1; cell++){
-                    for(int dx = -1; dx <= 1; dx++){
-                        for(int dy = -1; dy <= 1; dy++){
-                            for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
-                                for(auto b2 = grid[row][cell].begin(); b2 != grid[row][cell].end(); b2++){
-                                    if(b1->pos != b2->pos){
-                                        olc::vf2d axis = b1->pos-b2->pos;
-                                        float dist = axis.mag();
-                                        if(dist < 2*radius){
-                                            olc::vf2d n = axis.norm();
-                                            b1->pos += 0.5*n*(2*radius-dist);
-                                            b2->pos -= 0.5*n*(2*radius-dist);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            std::thread t1(collide1);
+            std::thread t2(collide2);
+            t1.join();
+            t2.join();
+
             for(int row = 0; row<(700/CELL_SIZE); row++){
                 for(int cell = 0; cell<(700/CELL_SIZE); cell++){
                     for(auto it = grid[row][cell].begin(); it != grid[row][cell].end(); it++){
@@ -118,10 +150,12 @@ public:
 
         if(frame % 30 == 0){
             printf("%f FPS @ %d objects\n", 1/fElapsedTime, counter);
-            grid[370/CELL_SIZE][80/CELL_SIZE].push_back({{370, 80}, {370, 80}, {0, 0}, {370/CELL_SIZE, 80/CELL_SIZE}});
+            for(int i = 0; i < 10; i++){
+                grid[(350+(2*radius*i))/CELL_SIZE][80/CELL_SIZE].push_back({{350+(2*radius*i), 80}, {350+(2*radius*i), 80}, {0, 0}, {(350+(2*radius*i))/CELL_SIZE, 80/CELL_SIZE}});
+            }
         }
 		return true;
-	}
+    }
 };
 
 
