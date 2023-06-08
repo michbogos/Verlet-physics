@@ -2,6 +2,9 @@ import pygame
 import math
 import random
 import time
+import threading
+
+from multiprocessing import Process
 
 
 pygame.init()
@@ -18,6 +21,8 @@ display = pygame.display.set_mode((700, 700))
 balls = []
 
 grid = [[[] for i in range(math.ceil(700/GRID_SUBDIVISIONS))] for j in range(math.ceil(700/GRID_SUBDIVISIONS))]
+grid_size = math.ceil(700/GRID_SUBDIVISIONS)
+
 
 class Ball:
     def __init__(self, x, y, color):
@@ -74,6 +79,40 @@ clock = pygame.time.Clock()
 
 object_count = 0
 
+def collision():
+    for row in range(1, grid_size-1):
+            for cell in range(1, grid_size-1):
+                for dx in range(-1, 2):
+                    for dy in range(-1, 2):
+                        #print(container)
+                        for ball1 in grid[row][cell]:
+                            for ball2 in grid[row+dx][cell+dy]:
+                                #checks += 1
+                                ball1.solve_collision(ball2)
+
+
+def collision1():
+    for row in range(1, (grid_size-1)//2):
+            for cell in range(1, grid_size-1):
+                for dx in range(-1, 2):
+                    for dy in range(-1, 2):
+                        #print(container)
+                        for ball1 in grid[row][cell]:
+                            for ball2 in grid[row+dx][cell+dy]:
+                                #checks += 1
+                                ball1.solve_collision(ball2)
+
+def collision2():
+    for row in range((grid_size//2), grid_size-1):
+            for cell in range(1, grid_size-1):
+                for dx in range(-1, 2):
+                    for dy in range(-1, 2):
+                        #print(container)
+                        for ball1 in grid[row][cell]:
+                            for ball2 in grid[row+dx][cell+dy]:
+                                #checks += 1
+                                ball1.solve_collision(ball2)
+
 
 # Main loop
 frame = 0
@@ -98,18 +137,9 @@ while running:
     dt = clock.tick(30)
     checks = 0
     for step in range(SUBSTEPS):
-        collision1 = time.perf_counter()
-        checks = 0
-        for row in range(1, len(grid)-1):
-            for cell in range(1, len(grid[row])-1):
-                for dx in range(-1, 2):
-                    for dy in range(-1, 2):
-                        #print(container)
-                        for ball1 in grid[row][cell]:
-                            for ball2 in grid[row+dx][cell+dy]:
-                                checks += 1
-                                ball1.solve_collision(ball2)
-        collision2 = time.perf_counter()
+        col1 = time.perf_counter()
+        collision()
+        col2 = time.perf_counter()
 
         rest1 = time.perf_counter()
         for row in range(len(grid)):
@@ -159,7 +189,7 @@ while running:
     draw2 = time.perf_counter()
     if frame%100 == 0:
         print(f"{object_count}: {checks}")
-        print(f"Collision_time: {collision2-collision1}")
+        print(f"Collision_time: {col2-col1}")
         print(f"Other_time: {rest2-rest1}")
         print(f"Grid: {grid2-grid1}")
         print(f"Draw: {draw2-draw1}")
