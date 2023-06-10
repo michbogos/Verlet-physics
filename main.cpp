@@ -7,10 +7,12 @@
 
 #define SUBSTEPS 8
 #define SUB_COEFF 1/SUBSTEPS/SUBSTEPS
-#define CELL_SIZE 4
+#define CELL_SIZE 20
+#define WIDTH 1000
+#define HEIGHT 1000
 
-float radius = 2;
-int frame = 0;
+constexpr float radius = 4;
+float frame = 0;
 
 struct Ball{
     olc::vf2d pos;
@@ -19,11 +21,11 @@ struct Ball{
     olc::vi2d pos_grid;
 };
 
-std::vector<std::vector<std::list<Ball>>> grid(700/CELL_SIZE, std::vector<std::list<Ball>>(700/CELL_SIZE, std::list<Ball>()));
+std::vector<std::vector<std::vector<Ball>>> grid(WIDTH/CELL_SIZE, std::vector<std::vector<Ball>>(HEIGHT/CELL_SIZE, std::vector<Ball>()));
 
 void collide1(){
-    for(int row = 1; row < (700/CELL_SIZE/2); row++){
-                for(int cell = 1; cell < (700/CELL_SIZE)-1; cell++){
+    for(int row = 1; row < (WIDTH/CELL_SIZE/2); row++){
+                for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
                     for(int dx = -1; dx <= 1; dx++){
                         for(int dy = -1; dy <= 1; dy++){
                             for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
@@ -46,8 +48,8 @@ void collide1(){
 }
 
 void collide2(){
-    for(int row = (700/CELL_SIZE/2); row < (700/CELL_SIZE)-1; row++){
-                for(int cell = 1; cell < (700/CELL_SIZE)-1; cell++){
+    for(int row = (WIDTH/CELL_SIZE/2); row < (WIDTH/CELL_SIZE)-1; row++){
+                for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
                     for(int dx = -1; dx <= 1; dx++){
                         for(int dy = -1; dy <= 1; dy++){
                             for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
@@ -75,7 +77,7 @@ public:
 public:
 	Example()
 	{
-		sAppName = "Example";
+		sAppName = "Verlet";
 	}
 
 public:
@@ -94,41 +96,63 @@ public:
         }
 		
         for(int substep = 0; substep < SUBSTEPS; substep++){
-            for(int row = 0; row < 700/CELL_SIZE; row++){
-                for(int cell = 0; cell < 700/CELL_SIZE; cell++){
-                    for(auto it = grid[row][cell].begin(); it != grid[row][cell].end(); it++){
-                        it->acc.y += 1000;
-
-                        olc::vf2d to = it->pos-olc::vf2d(350.0, 350.0);
-                        float dist = to.mag();
-                        if(dist > 300-2*radius){
-                            it->pos -= to.norm()*(dist-300.0+radius);
+            for(int row = 0; row < WIDTH/CELL_SIZE; row++){
+                for(int cell = 0; cell < HEIGHT/CELL_SIZE; cell++){
+                    for(int ball = 0; ball < grid[row][cell].size(); ball++){
+                        grid[row][cell][ball].acc.y += 1000;
+                        if(grid[row][cell][ball].pos.y > HEIGHT-100){
+                            grid[row][cell][ball].pos.y = HEIGHT-100;
+                        }
+                        if(grid[row][cell][ball].pos.y < 100){
+                            grid[row][cell][ball].pos.y = 100;
+                        }
+                        if(grid[row][cell][ball].pos.x < 100){
+                            grid[row][cell][ball].pos.x = 100;
+                        }
+                        if(grid[row][cell][ball].pos.x > WIDTH-100){
+                            grid[row][cell][ball].pos.x = WIDTH-100;
                         }
 
-                        olc::vf2d vel = it->pos-it->pos_prev;
-                        it->pos_prev = it->pos;
-                        it->pos += vel + it->acc*fElapsedTime*fElapsedTime*SUB_COEFF;
+                        olc::vf2d vel = grid[row][cell][ball].pos-grid[row][cell][ball].pos_prev;
+                        grid[row][cell][ball].pos_prev = grid[row][cell][ball].pos;
+                        grid[row][cell][ball].pos += vel + grid[row][cell][ball].acc*fElapsedTime*fElapsedTime*SUB_COEFF;
 
-                        it->acc.y = 0;
+                        grid[row][cell][ball].acc.y = 0;
                     }
                 }
             }
 
-            std::thread t1(collide1);
-            std::thread t2(collide2);
-            t1.join();
-            t2.join();
+            for(int row = 1; row < (WIDTH/CELL_SIZE)-1; row++){
+                for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
+                    for(int dx = -1; dx <= 1; dx++){
+                        for(int dy = -1; dy <= 1; dy++){
+                            for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
+                                for(auto b2 = grid[row][cell].begin(); b2 != grid[row][cell].end(); b2++){
+                                    if(b1->pos != b2->pos){
+                                        olc::vf2d axis = b1->pos-b2->pos;
+                                        float dist = axis.mag();
+                                        if(dist < 2*radius){
+                                            olc::vf2d n = axis.norm();
+                                            b1->pos += 0.5*n*(2*radius-dist);
+                                            b2->pos -= 0.5*n*(2*radius-dist);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
 
-            for(int row = 0; row<(700/CELL_SIZE); row++){
-                for(int cell = 0; cell<(700/CELL_SIZE); cell++){
-                    for(auto it = grid[row][cell].begin(); it != grid[row][cell].end(); it++){
-                        if((int)(it->pos.x/CELL_SIZE) != it->pos_grid.x || (int)(it->pos.y/CELL_SIZE) != it->pos_grid.y){
-                            Ball obj = *it;
-                            auto del = it;
-                            it = std::prev(it);
-                            grid[row][cell].erase(del);
+            for(int row = 0; row<(WIDTH/CELL_SIZE); row++){
+                for(int cell = 0; cell<(HEIGHT/CELL_SIZE); cell++){
+                    for(int ball = 0; ball < grid[row][cell].size(); ball++){
+                        if((int)(grid[row][cell][ball].pos.x/CELL_SIZE) != grid[row][cell][ball].pos_grid.x || (int)(grid[row][cell][ball].pos.y/CELL_SIZE) != grid[row][cell][ball].pos_grid.y){
+                            Ball obj = grid[row][cell][ball];
+                            grid[row][cell].erase(grid[row][cell].begin()+ball);
                             obj.pos_grid = {(int)(obj.pos.x/CELL_SIZE), (int)(obj.pos.y/CELL_SIZE)};
                             grid[obj.pos_grid.x][obj.pos_grid.y].push_back(obj);
+                            ball --;
                         }
                     }
                 }
@@ -138,20 +162,20 @@ public:
         int counter = 0;
         Clear({0, 0, 0});
         //DrawCircle({350, 350}, 300);
-        for(int row = 0; row < 700/CELL_SIZE; row++){
-            for(int cell = 0; cell < 700/CELL_SIZE; cell++){
+        for(int row = 0; row < WIDTH/CELL_SIZE; row++){
+            for(int cell = 0; cell < HEIGHT/CELL_SIZE; cell++){
                 for(auto ball : grid[row][cell]){
                     counter ++;
                     DrawCircle(ball.pos, radius);
                 }
             }
         }
-        frame ++;
+        frame += fElapsedTime;
 
-        if(frame % 30 == 0){
+        if(frame >= 0.3){
             printf("%f FPS @ %d objects\n", 1/fElapsedTime, counter);
-            for(int i = 0; i < 10; i++){
-                grid[(350+(2*radius*i))/CELL_SIZE][80/CELL_SIZE].push_back({{350+(2*radius*i), 80}, {350+(2*radius*i), 80}, {0, 0}, {(350+(2*radius*i))/CELL_SIZE, 80/CELL_SIZE}});
+            for(int i = 0; i < 1; i++){
+                grid[(WIDTH-100+(2*radius*i))/CELL_SIZE][100/CELL_SIZE].push_back({{WIDTH-100+(2*radius*i), 100}, {(WIDTH-99.5)+(2*radius*i), 99.5}, {0, 0}, {(WIDTH-100+(2*radius*i))/CELL_SIZE, 100/CELL_SIZE}});
             }
         }
 		return true;
@@ -162,7 +186,7 @@ public:
 int main()
 {
 	Example demo;
-	if (demo.Construct(700, 700, 1, 1))
+	if (demo.Construct(WIDTH, HEIGHT, 1, 1))
 		demo.Start();
 	return 0;
 }

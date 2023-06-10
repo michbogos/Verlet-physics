@@ -6,4 +6,4 @@ Requires pygame
 
 C++ implementation with grid and olcPixelameEngine
 
-Current stability record: ~4k balls
+Current stability record: ~9k balls with specific settings
