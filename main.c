@@ -1,158 +1,95 @@
-#include <SDL2/SDL.h>
-#include <time.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include<raylib.h>
+#include<raymath.h>
+#include"rlights.h"
+#include<stdlib.h>
 
-#define MAX 1000
+struct Ball{
+    Vector3 pos;
+    Vector3 pos_prev;
+    Vector3 acc;
+};
 
-#define QUITKEY SDLK_ESCAPE
-#define WIDTH 700
-#define HEIGHT 700
-#define SUBSTEPS 8
-#define SUB_COEFF 1.0/SUBSTEPS/SUBSTEPS
-
-SDL_Window* screen = NULL;
-SDL_Renderer* renderer;
-SDL_Event event;
-SDL_Rect source, destination, dst;
-
-int errorCount = 0;
-int keypressed;
-int rectCount = 0;
-
-void drawcircle(int x0, int y0, int radius)
+int main(void)
 {
-    int x = radius-1;
-    int y = 0;
-    int dx = 1;
-    int dy = 1;
-    int err = dx - (radius << 1);
+    struct Ball balls[1000];
+    balls[0].pos = (Vector3){2, 1, 2};
+    balls[1].pos = (Vector3){-2, 3, -2};
+    int num_balls = 2;
+    float RADIUS = 7;
+    float DT = 0.1;
 
-    while (x >= y)
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
+    InitWindow(800, 450, "raylib [core] example - basic window");
+
+    Camera camera = { 0 };
+    camera.position = (Vector3){ 0.0f, 10.0f, 10.0f };
+    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
+    camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
+    camera.fovy = 45.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
+
+    Shader shader = LoadShader("./basic.vs", "./basic.fs");  
+
+    Model sphere = LoadModelFromMesh(GenMeshSphere(1, 20, 20));
+    shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
+    sphere.materials[0].shader = shader;
+
+    while (!WindowShouldClose())
     {
-        SDL_RenderDrawPoint(renderer, x0 + x, y0 + y);
-        SDL_RenderDrawPoint(renderer, x0 + y, y0 + x);
-        SDL_RenderDrawPoint(renderer, x0 - y, y0 + x);
-        SDL_RenderDrawPoint(renderer, x0 - x, y0 + y);
-        SDL_RenderDrawPoint(renderer, x0 - x, y0 - y);
-        SDL_RenderDrawPoint(renderer, x0 - y, y0 - x);
-        SDL_RenderDrawPoint(renderer, x0 + y, y0 - x);
-        SDL_RenderDrawPoint(renderer, x0 + x, y0 - y);
-
-        if (err <= 0)
-        {
-            y++;
-            err += dy;
-            dy += 2;
+        //Bounds
+        for(int i = 0; i < num_balls; i++){
+            if(Vector3Distance(balls[i].pos, (Vector3){0,0,0})> RADIUS-0.5){
+                balls[i].pos = Vector3Scale(balls[i].pos, (RADIUS-0.5)/Vector3Distance(balls[i].pos, (Vector3){0, 0, 0}));
+            }
         }
-        
-        if (err > 0)
-        {
-            x--;
-            dx += 2;
-            err += dx - (radius << 1);
+        // Integrate
+        for(int i = 0 ; i < num_balls; i++){
+            balls[i].acc.y -= 0.01;
+            Vector3 v = Vector3Subtract(balls[i].pos, balls[i].pos_prev);
+            balls[i].pos_prev = balls[i].pos;
+            balls[i].pos = Vector3Add(balls[i].pos, Vector3Add(v, Vector3Scale(balls[i].acc, DT*DT)));
+            balls[i].acc = Vector3Zero();
         }
-    }
-}
 
-int length = 0;
-float balls[4*MAX];
-int mouseX, mouseY;
-
-void addBall(int x, int y){
-    balls[2*length] = x;
-    balls[2*length+1] = y;
-    balls[2*length+2] = x;
-    balls[2*length+3] = y;
-    length++;
-}
-
-void LogError(char* msg) {
-	printf("%s\n", msg);
-	errorCount++;
-}
-/* Initialize all setup, set screen mode, load images etc */
-void InitSetup() {
-	srand((int)time(NULL));
-	SDL_Init(SDL_INIT_EVERYTHING);
-	SDL_CreateWindowAndRenderer(WIDTH, HEIGHT, SDL_WINDOW_SHOWN, &screen, &renderer);
-	if (!screen) {
-		LogError("InitSetup failed to create window");
-	}
-}
-
-void end() {
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(screen);
-	SDL_Quit();
-	exit(0);
-}
-
-
-void Draw() {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-    SDL_RenderClear(renderer);
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 0);
-    for(int i = 0; i < length; i++){
-        drawcircle(balls[2*i], balls[2*i+1], 50);
-    }
-	SDL_RenderPresent(renderer);
-}
-
-void Update(){
-    for(int i = 0; i < length; i++){
-        float posx = balls[6*i];
-        float posy = balls[6*i+1];
-        float prex = balls[6*i+2];
-        float prey = balls[6*i+3];
-        const float vx = posx-prex;
-        const float vy = posy-prey;
-        balls[6*i+1] += vx + 1000*SUB_COEFF*0.0001;
-        balls[6*i+1] += vy + 1000*SUB_COEFF*0.0001;
-        balls[6*i+2] = posx;
-        balls[6*i+3] = posy;
-    }
-}
-
-void GameLoop() {
-	int gameRunning = 1;
-	while (gameRunning)
-	{
-		Draw();
-        Update();
-		while (SDL_PollEvent(&event)) {
-			switch (event.type) {
-                case SDL_MOUSEBUTTONDOWN:
-                    SDL_GetMouseState(&mouseX, &mouseY);
-                    addBall(mouseX, mouseY);
-                case SDL_KEYDOWN:
-                    keypressed = event.key.keysym.sym;
-                    if (keypressed == QUITKEY)
-                    {
-                        gameRunning = 0;
-                        break;
+        //Collide
+        for(int i = 0; i < num_balls; i++){
+            for(int j = 0; j < num_balls; j++){
+                if(!Vector3Equals(balls[i].pos, balls[j].pos)){
+                    float dist = Vector3Distance(balls[i].pos, balls[j].pos);
+                    if(dist < 2.0f){
+                        Vector3 n = Vector3Normalize(Vector3Subtract(balls[i].pos, balls[j].pos));
+                        float delta = 2-dist;
+                        balls[i].pos = Vector3Add(balls[i].pos, Vector3Scale(n, delta*0.5));
+                        balls[j].pos = Vector3Subtract(balls[j].pos, Vector3Scale(n, delta*0.5));
                     }
-
-                    break;
-                case SDL_QUIT: /* if mouse click to close window */
-                {
-                    gameRunning = 0;
-                    break;
                 }
-                case SDL_KEYUP: {
-                    break;
+            }
+        }
+
+        //Draw
+        //UpdateCamera(&camera, CAMERA_ORBITAL);
+        float cameraPos[3] = { camera.position.x, camera.position.y, camera.position.z };
+        SetShaderValue(shader, shader.locs[SHADER_LOC_VECTOR_VIEW], cameraPos, SHADER_UNIFORM_VEC3);
+        BeginDrawing();
+            ClearBackground(RAYWHITE);
+            BeginMode3D(camera);
+                DrawGrid(20, 1);
+                for(int i = 0; i < num_balls; i++){
+                    DrawModel(sphere, balls[i].pos, 1.0, WHITE);
                 }
-			} 
+            EndMode3D();
+        EndDrawing();
 
-		}
-	}
-}
+        //Handle Input
+        if(IsKeyPressed(KEY_SPACE)){
+            balls[num_balls].pos = (Vector3){((float)rand()/(float)(RAND_MAX/10))-5.0f, 0.5f, ((float)rand()/(float)(RAND_MAX/10))-5.0f};
+            num_balls += 1;
+        }
+    }
 
-int main(int argc, char* args[])
-{
-    memset(balls, -1, MAX);
-	InitSetup();
-	GameLoop();
-	end();
-	return 0;
+    UnloadShader(shader);
+    UnloadModel(sphere);
+
+    CloseWindow();
+    return 0;
 }
