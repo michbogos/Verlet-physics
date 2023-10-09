@@ -11,4 +11,4 @@ C++ implementation with 3d grid and raylib
 
 Current stability record: ~9k balls with specific settings
 
-3d stability record: ~8k balls
+3d stability record: ~11k balls
