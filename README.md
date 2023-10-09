@@ -1,6 +1,6 @@
 # Verlet Balls
 
-[]("https://github.com/michbogos/Verlet-physics/blob/master/preview.png?raw=true")
+![]("https://github.com/michbogos/Verlet-physics/blob/master/preview.png?raw=true")
 
 Simple collision detection and verlet integration.
 Will maybe improve in the future.
