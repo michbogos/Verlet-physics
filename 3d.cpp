@@ -13,10 +13,11 @@ struct Ball{
     Vector3 acc;
 };
 
-int SUBDIV = 10;
+int SUBDIV = 25;
 float RADIUS = 7;
-float SPHERE_RADIUS = 0.2;
-float GRID_SIZE = 10;
+float SPHERE_RADIUS = 0.3;
+float GRID_SIZE = 8;
+float ADD_CUBE_RADIUS = 2;
 
 int main(void)
 {
@@ -24,7 +25,7 @@ int main(void)
     std::vector<std::vector<std::vector<std::vector<Ball>>>> grid(SUBDIV, std::vector<std::vector<std::vector<Ball>>>(SUBDIV, std::vector<std::vector<Ball>>(SUBDIV, std::vector<Ball>())));
     std::vector<std::vector<int>> full;
 
-    SetConfigFlags(FLAG_MSAA_4X_HINT);
+    // SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(1200, 900, "raylib [core] example - basic window");
 
     Camera camera = { 0 };
@@ -36,7 +37,7 @@ int main(void)
 
     Shader shader = LoadShader("./basic.vs", "./basic.fs");  
 
-    Model sphere = LoadModelFromMesh(GenMeshSphere(1, 20, 20));
+    Model sphere = LoadModelFromMesh(GenMeshSphere(1, 10, 10));
     shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
     sphere.materials[0].shader = shader;
     float timer = 0;
@@ -110,19 +111,19 @@ int main(void)
                             for(int dz : {0, 1, -1}){
                                 for(int i = 0; i < grid[x][y][z].size(); i++){
                                     for(int j = 0; j < grid[x+dx][y+dy][z+dz].size(); j++){
-                                        Ball balli = grid[x][y][z][i];
-                                        Ball ballj = grid[x+dx][y+dy][z+dz][j];
-                                        if(!Vector3Equals(balli.pos, ballj.pos)){
-                                            float dist = Vector3Distance(balli.pos, ballj.pos);
+                                        // Ball balli = grid[x][y][z][i];
+                                        // Ball* ballj = grid[x+dx][y+dy][z+dz][j];
+                                        if(!Vector3Equals(grid[x][y][z][i].pos, grid[x+dx][y+dy][z+dz][j].pos)){
+                                            float dist = Vector3Distance(grid[x][y][z][i].pos, grid[x+dx][y+dy][z+dz][j].pos);
                                             if(dist < 2*SPHERE_RADIUS){
-                                                Vector3 n = Vector3Normalize(Vector3Subtract(balli.pos, ballj.pos));
+                                                Vector3 n = Vector3Normalize(Vector3Subtract(grid[x][y][z][i].pos, grid[x+dx][y+dy][z+dz][j].pos));
                                                 float delta = 2*SPHERE_RADIUS-dist;
-                                                balli.pos = Vector3Add(balli.pos, Vector3Scale(n, delta*0.5));
-                                                ballj.pos = Vector3Subtract(ballj.pos, Vector3Scale(n, delta*0.5));
+                                                grid[x][y][z][i].pos = Vector3Add(grid[x][y][z][i].pos, Vector3Scale(n, delta*0.5));
+                                                grid[x+dx][y+dy][z+dz][j].pos = Vector3Subtract(grid[x+dx][y+dy][z+dz][j].pos, Vector3Scale(n, delta*0.5));
                                             }
                                         }
-                                        grid[x][y][z][i].pos = balli.pos;
-                                        grid[x+dx][y+dy][z+dz][j].pos = ballj.pos;
+                                        // grid[x][y][z][i].pos = grid[x][y][z][i].pos;
+                                        // grid[x+dx][y+dy][z+dz][j].pos = grid[x+dx][y+dy][z+dz][j].pos;
                                     }
                                 }
                             }
@@ -157,11 +158,15 @@ int main(void)
         }
 
         //Handle Input
-        if(timer>= 0.2f){
+        if(timer>= 0.5f){
             timer = 0;
-            balls.push_back({(Vector3){-3, 3, 0}, (Vector3){-3, 3, 0}, Vector3Zero()});
-            balls.push_back({(Vector3){-3, 3, 3}, (Vector3){-3, 3, 3}, Vector3Zero()});
-            balls.push_back({(Vector3){-3, -3, -3}, (Vector3){-3, -3, -3}, Vector3Zero()});
+            for(float i = -2.0f; i < 3.0f; i+=1.0f){
+                for(float j = -2.0f; j < 3.0f; j+=1.0f){
+                    for(float k = -2.0f; k < 3.0f; k+=1.0f){
+                        balls.push_back({(Vector3){i, j, k}, (Vector3){i, j, k}, Vector3Zero()});
+                    }
+                }
+            }
         }
 
         if(IsKeyDown(KEY_W)){
