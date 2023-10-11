@@ -14,10 +14,10 @@ struct Ball{
     Vector3 acc;
 };
 
-int SUBDIV = 30;
+int SUBDIV = 20;
 float RADIUS = 7;
 float SPHERE_RADIUS = 0.25;
-float GRID_SIZE = 7.5;
+float GRID_SIZE = 9;
 float ADD_CUBE_RADIUS = 2;
 int SUBSTEPS = 8;
 
@@ -25,8 +25,8 @@ std::vector<Ball> balls;
 std::vector<std::vector<std::vector<std::vector<Ball*>>>> grid(SUBDIV, std::vector<std::vector<std::vector<Ball*>>>(SUBDIV, std::vector<std::vector<Ball*>>(SUBDIV, std::vector<Ball*>())));
 // std::vector<std::vector<int>> full;
 
-void collide(int start, int end){
-    for(int x = start; x < end; x++){
+void collide(){
+    for(int x = 1; x < SUBDIV-1; x++){
             for(int y = 1; y < SUBDIV-1; y++){
                 for(int z = 1; z < SUBDIV-1; z++){
                     for(int dx : {0,1,-1}){
@@ -36,7 +36,6 @@ void collide(int start, int end){
                                     for(int j = 0; j < grid[x+dx][y+dy][z+dz].size(); j++){
                                         // Ball balli = grid[x][y][z][i];
                                         // Ball* ballj = grid[x+dx][y+dy][z+dz][j];
-                                        for(int step = 0; step < SUBSTEPS; step++){
                                             if(!Vector3Equals(grid[x][y][z][i]->pos, grid[x+dx][y+dy][z+dz][j]->pos)){
                                                 float dist = Vector3Distance(grid[x][y][z][i]->pos, grid[x+dx][y+dy][z+dz][j]->pos);
                                                 if(dist < 2*SPHERE_RADIUS){
@@ -46,7 +45,6 @@ void collide(int start, int end){
                                                     grid[x+dx][y+dy][z+dz][j]->pos = Vector3Subtract(grid[x+dx][y+dy][z+dz][j]->pos, Vector3Scale(n, delta*0.5));
                                                 }
                                             }
-                                        }
                                         // grid[x][y][z][i].pos = grid[x][y][z][i].pos;
                                         // grid[x+dx][y+dy][z+dz][j].pos = grid[x+dx][y+dy][z+dz][j].pos;
                                     }
@@ -106,13 +104,14 @@ int main(void)
 
 
         //Bounds
+        for(int i = 0; i < SUBSTEPS; i++){
         for(int i = 0; i < balls.size(); i++){
             if(Vector3Distance(balls[i].pos, (Vector3){0,0,0})> RADIUS-SPHERE_RADIUS){
                 balls[i].pos = Vector3Scale(balls[i].pos, (RADIUS-SPHERE_RADIUS)/Vector3Distance(balls[i].pos, (Vector3){0, 0, 0}));
             }
         }
         // Integrate
-        float dt = GetFrameTime();
+        float dt = GetFrameTime()/SUBSTEPS;
         for(int i = 0 ; i < balls.size(); i++){
             balls[i].acc.y -= 10;
             Vector3 v = Vector3Subtract(balls[i].pos, balls[i].pos_prev);
@@ -130,7 +129,7 @@ int main(void)
             int x = (int)((float)x_adj/((float)2*GRID_SIZE/(float)SUBDIV));
             int y = (int)((float)y_adj/((float)2*GRID_SIZE/(float)SUBDIV));
             int z = (int)((float)z_adj/((float)2*GRID_SIZE/(float)SUBDIV));
-            grid[x][y][z].push_back(&balls[i]);
+            grid[std::min(std::max(x, 0), SUBDIV-1)][std::min(std::max(y, 0), SUBDIV-1)][std::min(std::max(z, 0), SUBDIV-1)].push_back(&balls[i]);
 
             // BeginDrawing();
             //         char buf[255];
@@ -140,23 +139,7 @@ int main(void)
         }
 
         //Collide
-        std::thread t1(collide, 1, SUBDIV/8);
-        std::thread t2(collide, SUBDIV/8, SUBDIV/8*2);
-        std::thread t3(collide, SUBDIV/8*2, SUBDIV/8*3);
-        std::thread t4(collide, SUBDIV/8*3, SUBDIV/8*4);
-        std::thread t5(collide, SUBDIV/8*4, SUBDIV/8*5);
-        std::thread t6(collide, SUBDIV/8*5, SUBDIV/8*6);
-        std::thread t7(collide, SUBDIV/8*6, SUBDIV/8*7);
-        std::thread t8(collide, SUBDIV/8*7, SUBDIV);
-
-        t1.join();
-        t2.join();
-        t3.join();
-        t4.join();
-        t5.join();
-        t6.join();
-        t7.join();
-        t8.join();
+            collide();
             // for(int i = 0; i < balls.size(); i++){
             //     for(int j = 0; j < balls.size(); j++){
             //         if(!Vector3Equals(balls[i].pos, balls[j].pos)){
@@ -172,6 +155,8 @@ int main(void)
             // }
 
         //clear vector
+        }
+
         for(int i = 0; i < grid.size(); i++){
             for(int j = 0; j < grid.size(); j ++){
                 for(int k = 0; k < grid.size(); k++){
@@ -182,9 +167,9 @@ int main(void)
 
         //Handle Input
         if(IsKeyPressed(KEY_SPACE)){
-            for(float i = -2.0f; i < 3.0f; i+=1.0f){
-                for(float j = -2.0f; j < 3.0f; j+=1.0f){
-                    for(float k = -2.0f; k < 3.0f; k+=1.0f){
+            for(float i = -2.0f; i < 3.0f; i+=0.5f){
+                for(float j = -2.0f; j < 3.0f; j+=0.5f){
+                    for(float k = -2.0f; k < 3.0f; k+=0.5f){
                         balls.push_back({(Vector3){i, j, k}, (Vector3){i, j, k}, Vector3Zero()});
                     }
                 }
