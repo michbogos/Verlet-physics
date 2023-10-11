@@ -14,19 +14,19 @@ struct Ball{
     Vector3 acc;
 };
 
-int SUBDIV = 20;
+int SUBDIV = 32;
 float RADIUS = 7;
-float SPHERE_RADIUS = 0.25;
-float GRID_SIZE = 9;
+float SPHERE_RADIUS = 0.15;
+float GRID_SIZE = 8.5;
 float ADD_CUBE_RADIUS = 2;
-int SUBSTEPS = 8;
+int SUBSTEPS = 4;
 
 std::vector<Ball> balls;
 std::vector<std::vector<std::vector<std::vector<Ball*>>>> grid(SUBDIV, std::vector<std::vector<std::vector<Ball*>>>(SUBDIV, std::vector<std::vector<Ball*>>(SUBDIV, std::vector<Ball*>())));
 // std::vector<std::vector<int>> full;
 
-void collide(){
-    for(int x = 1; x < SUBDIV-1; x++){
+void collide(int start, int end){
+    for(int x = start; x < end; x++){
             for(int y = 1; y < SUBDIV-1; y++){
                 for(int z = 1; z < SUBDIV-1; z++){
                     for(int dx : {0,1,-1}){
@@ -139,7 +139,23 @@ int main(void)
         }
 
         //Collide
-            collide();
+            std::thread t1(collide, 1, SUBDIV/8);
+            std::thread t2(collide, SUBDIV/8*1, SUBDIV/8*2);
+            std::thread t3(collide, SUBDIV/8*2, SUBDIV/8*3);
+            std::thread t4(collide, SUBDIV/8*3, SUBDIV/8*4);
+            std::thread t5(collide, SUBDIV/8*4, SUBDIV/8*5);
+            std::thread t6(collide, SUBDIV/8*5, SUBDIV/8*6);
+            std::thread t7(collide, SUBDIV/8*6, SUBDIV/8*7);
+            std::thread t8(collide, SUBDIV/8*7, SUBDIV-1);
+
+            t1.join();
+            t2.join();
+            t3.join();
+            t4.join();
+            t5.join();
+            t6.join();
+            t7.join();
+            t8.join();
             // for(int i = 0; i < balls.size(); i++){
             //     for(int j = 0; j < balls.size(); j++){
             //         if(!Vector3Equals(balls[i].pos, balls[j].pos)){
@@ -154,13 +170,12 @@ int main(void)
             //     }
             // }
 
-        //clear vector
-        }
-
-        for(int i = 0; i < grid.size(); i++){
-            for(int j = 0; j < grid.size(); j ++){
-                for(int k = 0; k < grid.size(); k++){
-                    grid[i][j][k].clear();
+            //clear vector
+            for(int i = 0; i < grid.size(); i++){
+                for(int j = 0; j < grid.size(); j ++){
+                    for(int k = 0; k < grid.size(); k++){
+                        grid[i][j][k].clear();
+                    }
                 }
             }
         }
