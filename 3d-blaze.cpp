@@ -8,10 +8,12 @@
 #include<string.h>
 #include"rcamera.h"
 
+#include <blaze/math/StaticVector.h>
+
 struct Ball{
-    Vector3 pos;
-    Vector3 pos_prev;
-    Vector3 acc;
+    blaze::StaticVector<float, 3>  pos;
+    blaze::StaticVector<float, 3>  pos_prev;
+    blaze::StaticVector<float, 3> acc;
 };
 
 struct Coord{
@@ -45,13 +47,13 @@ void collide(int start, int end){
                                     for(int j = 0; j < grid[x+dx][y+dy][z+dz].size(); j++){
                                         // Ball balli = grid[x][y][z][i];
                                         // Ball* ballj = grid[x+dx][y+dy][z+dz][j];
-                                            if(!Vector3Equals(grid[x][y][z][i]->pos, grid[x+dx][y+dy][z+dz][j]->pos)){
-                                                float dist = Vector3Distance(grid[x][y][z][i]->pos, grid[x+dx][y+dy][z+dz][j]->pos);
+                                            if(grid[x][y][z][i]->pos != grid[x+dx][y+dy][z+dz][j]->pos){
+                                                float dist = blaze::length(grid[x][y][z][i]->pos - grid[x+dx][y+dy][z+dz][j]->pos);
                                                 if(dist < 2*SPHERE_RADIUS){
-                                                    Vector3 n = Vector3Normalize(Vector3Subtract(grid[x][y][z][i]->pos, grid[x+dx][y+dy][z+dz][j]->pos));
+                                                    Vector3 n = blaze::normalize(grid[x][y][z][i]->pos - grid[x+dx][y+dy][z+dz][j]->pos);
                                                     float delta = 2*SPHERE_RADIUS-dist;
-                                                    grid[x][y][z][i]->pos = Vector3Add(grid[x][y][z][i]->pos, Vector3Scale(n, delta*0.5));
-                                                    grid[x+dx][y+dy][z+dz][j]->pos = Vector3Subtract(grid[x+dx][y+dy][z+dz][j]->pos, Vector3Scale(n, delta*0.5));
+                                                    grid[x][y][z][i]->pos = grid[x][y][z][i]->pos + (n*delta*0.5);
+                                                    grid[x+dx][y+dy][z+dz][j]->pos = grid[x+dx][y+dy][z+dz][j]->pos-n*delta*0.5;
                                                 }
                                             }
                                         // grid[x][y][z][i].pos = grid[x][y][z][i].pos;
@@ -115,26 +117,26 @@ int main(void)
         //Bounds
         for(int i = 0; i < SUBSTEPS; i++){
         for(int i = 0; i < balls.size(); i++){
-            if(Vector3Distance(balls[i].pos, (Vector3){0,0,0})> RADIUS-SPHERE_RADIUS){
-                balls[i].pos = Vector3Scale(balls[i].pos, (RADIUS-SPHERE_RADIUS)/Vector3Distance(balls[i].pos, (Vector3){0, 0, 0}));
+            if(blaze::length(balls[i].pos) > RADIUS-SPHERE_RADIUS){
+                balls[i].pos = balls[i].pos*((RADIUS-SPHERE_RADIUS)/blaze::length(balls[i].pos));
             }
         }
         // Integrate
         float dt = GetFrameTime()/SUBSTEPS;
         for(int i = 0 ; i < balls.size(); i++){
             balls[i].acc.y -= 10;
-            Vector3 v = Vector3Subtract(balls[i].pos, balls[i].pos_prev);
+            Vector3 v = balls[i].pos - balls[i].pos_prev;
             balls[i].pos_prev = balls[i].pos;
-            balls[i].pos = Vector3Add(balls[i].pos, Vector3Add(v, Vector3Scale(balls[i].acc,  dt*dt)));
-            balls[i].acc = Vector3Zero();
+            balls[i].pos = (balls[i].pos + (v + (balls[i].acc *  dt*dt)));
+            balls[i].acc = blaze::StaticVector<float, 3>(0, 0, 0);
         }
 
 
         //Spatial Hash
         for(int i = 0; i < balls.size(); i++){
-            float x_adj = balls[i].pos.x + GRID_SIZE;
-            float y_adj = balls[i].pos.y + GRID_SIZE;
-            float z_adj = balls[i].pos.z + GRID_SIZE;
+            float x_adj = balls[i].pos[0] + GRID_SIZE;
+            float y_adj = balls[i].pos[1] + GRID_SIZE;
+            float z_adj = balls[i].pos[2] + GRID_SIZE;
             int x = (int)((float)x_adj/((float)2*GRID_SIZE/(float)SUBDIV));
             int y = (int)((float)y_adj/((float)2*GRID_SIZE/(float)SUBDIV));
             int z = (int)((float)z_adj/((float)2*GRID_SIZE/(float)SUBDIV));
@@ -197,7 +199,7 @@ int main(void)
             for(float i = -2.0f; i < 3.0f; i+=0.5f){
                 for(float j = -2.0f; j < 3.0f; j+=0.5f){
                     for(float k = -2.0f; k < 3.0f; k+=0.5f){
-                        balls.push_back({(Vector3){i, j, k}, (Vector3){i, j, k}, Vector3Zero()});
+                        balls.push_back({blaze::StaticVector<float, 3>(i, j, k), blaze::StaticVector<float, 3>(i, j, k), blaze::ZeroVector<float, 3>()});
                     }
                 }
             }
