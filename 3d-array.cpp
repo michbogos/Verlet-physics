@@ -1,10 +1,13 @@
 #define CAMERA_IMPLEMENTATION
-#include<vector>
+#define MAX_NUM  100000
+#define INF 2000000000
 #include<iostream>
 #include<thread>
 #include<raylib.h>
+#include<algorithm>
 #include<raymath.h>
 #include<stdio.h>
+#include<map>
 #include<string.h>
 #include"rcamera.h"
 
@@ -16,59 +19,56 @@ struct Ball{
     Vector3 acc;
 };
 
-struct Cell{
-    int num_elements = 0;
-    Ball* balls[8];
-};
-
 float RADIUS = 7;
-float SPHERE_RADIUS = 0.15;
-float GRID_SIZE = 8;
+float SPHERE_RADIUS = 0.25;
+float GRID_SIZE =100;
 float ADD_CUBE_RADIUS = 2;
-int SUBSTEPS = 4;
-int MAX_NUM = 100000;
+int SUBSTEPS = 1;
 int NUM_BALLS = 1;
 
-Ball balls[100000];
-Cell grid[SUBDIV][SUBDIV][SUBDIV];
-Cell empty[SUBDIV][SUBDIV][SUBDIV];
+Ball balls[MAX_NUM];
+int ids[MAX_NUM];
+int start[MAX_NUM];
+int aux[MAX_NUM];
 
+int hash(Vector3 vec){
+    return abs((((int)(vec.x*GRID_SIZE)*(73856093))^((int)(vec.y*GRID_SIZE)*(19349663))^((int)(vec.z*GRID_SIZE)*(83492791)))%NUM_BALLS);
+}
 
-void collide(int start, int end){
-    for(int x = start; x < end; x++){
-            for(int y = 1; y < SUBDIV-1; y++){
-                for(int z = 1; z < SUBDIV-1; z++){
-                    for(int dx : {0,1,-1}){
-                        for(int dy : {0, 1, -1}){
-                            for(int dz : {0, 1, -1}){
-                                for(int i = 0; i < grid[x][y][z].num_elements; i++){
-                                    for(int j = 0; j < grid[x+dx][y+dy][z+dz].num_elements; j++){
-                                        // Ball balli = grid[x][y][z][i];
-                                        // Ball* ballj = grid[x+dx][y+dy][z+dz][j];
-                                            if(!Vector3Equals(grid[x][y][z].balls[i]->pos, grid[x+dx][y+dy][z+dz].balls[j]->pos)){
-                                                float dist = Vector3Distance(grid[x][y][z].balls[i]->pos, grid[x+dx][y+dy][z+dz].balls[j]->pos);
-                                                if(dist < 2*SPHERE_RADIUS){
-                                                    Vector3 n = Vector3Normalize(Vector3Subtract(grid[x][y][z].balls[i]->pos, grid[x+dx][y+dy][z+dz].balls[j]->pos));
-                                                    float delta = 2*SPHERE_RADIUS-dist;
-                                                    grid[x][y][z].balls[i]->pos = Vector3Add(grid[x][y][z].balls[i]->pos, Vector3Scale(n, delta*0.5));
-                                                    grid[x+dx][y+dy][z+dz].balls[j]->pos = Vector3Subtract(grid[x+dx][y+dy][z+dz].balls[j]->pos, Vector3Scale(n, delta*0.5));
-                                                }
-                                            }
-                                        // grid[x][y][z][i].pos = grid[x][y][z][i].pos;
-                                        // grid[x+dx][y+dy][z+dz][j].pos = grid[x+dx][y+dy][z+dz][j].pos;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+void sort(){
+    for(int i = 0; i < NUM_BALLS; i++){
+        aux[ids[i]]++;
+    }
+    for(int i = 0; i < NUM_BALLS; i++){
+        if(aux[i]){
+            while(aux[i]--){
+                ids[i] = i;
+            }
             }
         }
     }
 
+
+void collide(int start, int end){
+    for(int i = start; i <= end; i++){
+        for(int j = start; j < end; j++){
+            Vector3 posi = balls[i].pos;
+            Vector3 posj = balls[j].pos;
+                if(!Vector3Equals(posj, posi)){
+                    float dist = Vector3Distance(posj, posi);
+                    if(dist < 2*SPHERE_RADIUS){
+                        Vector3 n = Vector3Normalize(Vector3Subtract(posi, posj));
+                        float delta = 2*SPHERE_RADIUS-dist;
+                        balls[i].pos = Vector3Add(posi, Vector3Scale(n, delta*0.5));
+                        balls[j].pos = Vector3Subtract(posj, Vector3Scale(n, delta*0.5));
+                    }
+                }
+        }
+    }
+}
+
 int main(void)
 {
-
     // SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(1200, 900, "raylib [core] example - basic window");
 
@@ -132,40 +132,25 @@ int main(void)
 
         //Spatial Hash
         for(int i = 0; i < NUM_BALLS; i++){
-            float x_adj = balls[i].pos.x + GRID_SIZE;
-            float y_adj = balls[i].pos.y + GRID_SIZE;
-            float z_adj = balls[i].pos.z + GRID_SIZE;
-            int x = (int)((float)x_adj/((float)2*GRID_SIZE/(float)SUBDIV));
-            int y = (int)((float)y_adj/((float)2*GRID_SIZE/(float)SUBDIV));
-            int z = (int)((float)z_adj/((float)2*GRID_SIZE/(float)SUBDIV));
-            grid[std::min(std::max(x, 0), SUBDIV-1)][std::min(std::max(y, 0), SUBDIV-1)][std::min(std::max(z, 0), SUBDIV-1)].balls[grid[std::min(std::max(x, 0), SUBDIV-1)][std::min(std::max(y, 0), SUBDIV-1)][std::min(std::max(z, 0), SUBDIV-1)].num_elements] = &balls[i];
-            grid[std::min(std::max(x, 0), SUBDIV-1)][std::min(std::max(y, 0), SUBDIV-1)][std::min(std::max(z, 0), SUBDIV-1)].num_elements++;
+            ids[i] = hash(balls[i].pos);
+        }
 
-            // BeginDrawing();
-            //         char buf[255];
-            //         sprintf(buf, "x:%d, y:%d, z:%d, posx:%f, posy:%f, posz:%f", x, y, z, x_adj, y_adj, z_adj);
-            //         DrawText(buf, 100, 100, 20, BLACK);
-            // EndDrawing();
+        sort();
+
+        for(int i = 0; i < NUM_BALLS; i++){
+            int el = ids[i];
+            int s = i;
+            while(ids[i] != el || i < NUM_BALLS-1){
+                i++;
+            }
+            start[i] = s;
         }
 
         //Collide
-            std::thread t1(collide, 1, SUBDIV/8);
-            std::thread t2(collide, SUBDIV/8*1, SUBDIV/8*2);
-            std::thread t3(collide, SUBDIV/8*2, SUBDIV/8*3);
-            std::thread t4(collide, SUBDIV/8*3, SUBDIV/8*4);
-            std::thread t5(collide, SUBDIV/8*4, SUBDIV/8*5);
-            std::thread t6(collide, SUBDIV/8*5, SUBDIV/8*6);
-            std::thread t7(collide, SUBDIV/8*6, SUBDIV/8*7);
-            std::thread t8(collide, SUBDIV/8*7, SUBDIV-1);
-
-            t1.join();
-            t2.join();
-            t3.join();
-            t4.join();
-            t5.join();
-            t6.join();
-            t7.join();
-            t8.join();
+        for(int i = NUM_BALLS-1; i > 0;){
+            collide(start[i], i);
+            i = start[i];
+        }
             // for(int i = 0; i < balls.size(); i++){
             //     for(int j = 0; j < balls.size(); j++){
             //         if(!Vector3Equals(balls[i].pos, balls[j].pos)){
@@ -188,19 +173,12 @@ int main(void)
             //         }
             //     }
             // }
-            for(int i = 0; i < SUBDIV; i++){
-                for(int j = 0; j < SUBDIV; j++){
-                    for(int k = 0; k < SUBDIV;k++){
-                        grid[i][j][k] = {0, {}};
-                    }
-                }
-            }
-
-
         }
 
         //Handle Input
         if(IsKeyPressed(KEY_SPACE)){
+            balls[NUM_BALLS] = {(Vector3){1, -1 ,1}, (Vector3){0, 0, 0}, Vector3Zero()};
+            NUM_BALLS ++;
             for(float i = -2.0f; i < 3.0f; i+=0.5f){
                 for(float j = -2.0f; j < 3.0f; j+=0.5f){
                     for(float k = -2.0f; k < 3.0f; k+=0.5f){
