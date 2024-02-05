@@ -7,11 +7,11 @@
 
 #define SUBSTEPS 8
 #define SUB_COEFF 1/SUBSTEPS/SUBSTEPS
-#define CELL_SIZE 20
+#define CELL_SIZE 8
 #define WIDTH 1000
 #define HEIGHT 1000
 
-constexpr float radius = 4;
+constexpr float radius = 2;
 float frame = 0;
 
 struct Ball{
@@ -49,6 +49,31 @@ void collide1(){
 
 void collide2(){
     for(int row = (WIDTH/CELL_SIZE/2); row < (WIDTH/CELL_SIZE)-1; row++){
+                for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
+                    for(int dx = -1; dx <= 1; dx++){
+                        for(int dy = -1; dy <= 1; dy++){
+                            for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
+                                for(auto b2 = grid[row][cell].begin(); b2 != grid[row][cell].end(); b2++){
+                                    if(b1->pos != b2->pos){
+                                        olc::vf2d axis = b1->pos-b2->pos;
+                                        float dist = axis.mag();
+                                        if(dist < 2*radius){
+                                            olc::vf2d n = axis.norm();
+                                            b1->pos += 0.5*n*(2*radius-dist);
+                                            b2->pos -= 0.5*n*(2*radius-dist);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+}
+
+void collideMP(){
+    #pragma omp parallel for
+    for(int row =1; row < (WIDTH/CELL_SIZE)-1; row++){
                 for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
                     for(int dx = -1; dx <= 1; dx++){
                         for(int dy = -1; dy <= 1; dy++){

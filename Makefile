@@ -1,5 +1,5 @@
 run: main.cpp
-	g++ -o verlet main.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17 -Ofast
+	g++ -o verlet main.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17 -Ofast -fopenmp
 
 3d: 3d.cpp
 	g++ 3d.cpp -lraylib -lGL -lm -lpthread -ldl -lrt -lX11 -o verlet -Ofast -march=native -mtune=native -funroll-loops -fno-signed-zeros -fno-trapping-math -fopenmp -D_GLIBCXX_PARALLEL
