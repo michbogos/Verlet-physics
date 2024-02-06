@@ -5,15 +5,13 @@
 #include<list>
 #include<thread>
 #include<queue>
-#include <condition_variable>
 #include <iostream>
-#include <mutex>
 #include <string>
 #include"threadpool.h"
 
 ThreadPool pool(12);
 
-#define SUBSTEPS 8
+#define SUBSTEPS 16
 #define SUB_COEFF 1/SUBSTEPS/SUBSTEPS
 #define CELL_SIZE 10
 #define WIDTH 1000
@@ -32,28 +30,28 @@ struct Ball{
 std::vector<std::vector<std::vector<Ball>>> grid(WIDTH/CELL_SIZE, std::vector<std::vector<Ball>>(HEIGHT/CELL_SIZE, std::vector<Ball>()));
 
 void collide(int start, int end){
-            for(int row = start; row < end; row++){
-                        for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
-                            for(int dx = -1; dx <= 1; dx++){
-                                for(int dy = -1; dy <= 1; dy++){
-                                    for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
-                                        for(auto b2 = grid[row][cell].begin(); b2 != grid[row][cell].end(); b2++){
-                                            if(b1->pos != b2->pos){
-                                                olc::vf2d axis = b1->pos-b2->pos;
-                                                float dist = axis.mag();
-                                                if(dist < 2*radius){
-                                                    olc::vf2d n = axis.norm();
-                                                    b1->pos += 0.5*n*(2*radius-dist);
-                                                    b2->pos -= 0.5*n*(2*radius-dist);
-                                                }
-                                            }
-                                        }
-                                    }
+    for(int row = start; row < end; row++){
+        for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
+            for(int dx = -1; dx <= 1; dx++){
+                for(int dy = -1; dy <= 1; dy++){
+                    for(int b1 = 0; b1 < grid[row+dx][cell+dy].size(); b1++){
+                        for(int b2 = 0; b2 < grid[row][cell].size(); b2++){
+                            if(grid[row+dx][cell+dy][b1].pos != grid[row][cell][b2].pos){
+                                olc::vf2d axis = grid[row+dx][cell+dy][b1].pos-grid[row][cell][b2].pos;
+                                float dist = axis.mag();
+                                if(dist < 2*radius){
+                                    olc::vf2d n = axis.norm();
+                                    grid[row+dx][cell+dy][b1].pos += 0.5*n*(2*radius-dist);
+                                    grid[row][cell][b2].pos -= 0.5*n*(2*radius-dist);
                                 }
                             }
                         }
-                    } 
+                    }
+                }
+            }
         }
+    }
+}
 
 void collide1(){
     for(int row = 1; row < (WIDTH/CELL_SIZE/2); row++){
@@ -178,15 +176,22 @@ public:
                     }
                 }
             }
-            std::vector<std::future<void>> res;
-            res.push_back(pool.enqueue(collide, 1, WIDTH/CELL_SIZE*1/10));
-            for(int i = 1; i < 9; i++){
-                res.push_back(pool.enqueue(collide, WIDTH/CELL_SIZE*(i/10), WIDTH/CELL_SIZE*(i+1)/10));
-            }
-            res.push_back(pool.enqueue(collide, WIDTH/CELL_SIZE*(9/10), WIDTH/CELL_SIZE-1));
-            for(int i = 0; i < 10; i++){
-                res[i].get();
-            }
+            auto res1 = pool.enqueue(collide, 1, (WIDTH/CELL_SIZE/8));
+            auto res2 = pool.enqueue(collide, (WIDTH/CELL_SIZE*1/8), (WIDTH/CELL_SIZE*2/8));
+            auto res3 = pool.enqueue(collide, (WIDTH/CELL_SIZE*2/8), (WIDTH/CELL_SIZE*3/8));
+            auto res4 = pool.enqueue(collide, (WIDTH/CELL_SIZE*3/8), (WIDTH/CELL_SIZE*4/8));
+            auto res5 = pool.enqueue(collide, (WIDTH/CELL_SIZE*4/8), (WIDTH/CELL_SIZE*5/8));
+            auto res6 = pool.enqueue(collide, (WIDTH/CELL_SIZE*5/8), (WIDTH/CELL_SIZE*6/8));
+            auto res7 = pool.enqueue(collide, (WIDTH/CELL_SIZE*6/8), (WIDTH/CELL_SIZE*7/8));
+            auto res8 = pool.enqueue(collide, (WIDTH/CELL_SIZE*7/8), (WIDTH/CELL_SIZE)-1);
+            res1.get();
+            res2.get();
+            res3.get();
+            res4.get();
+            res5.get();
+            res6.get();
+            res7.get();
+            res8.get();
             // for(int row = 1; row < (WIDTH/CELL_SIZE)-1; row++){
             //     for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
             //         for(int dx = -1; dx <= 1; dx++){

@@ -73,27 +73,27 @@ void collide2(){
 
 void collideMP(){
     #pragma omp parallel for
-    for(int row =1; row < (WIDTH/CELL_SIZE)-1; row++){
-                for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
-                    for(int dx = -1; dx <= 1; dx++){
-                        for(int dy = -1; dy <= 1; dy++){
-                            for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
-                                for(auto b2 = grid[row][cell].begin(); b2 != grid[row][cell].end(); b2++){
-                                    if(b1->pos != b2->pos){
-                                        olc::vf2d axis = b1->pos-b2->pos;
-                                        float dist = axis.mag();
-                                        if(dist < 2*radius){
-                                            olc::vf2d n = axis.norm();
-                                            b1->pos += 0.5*n*(2*radius-dist);
-                                            b2->pos -= 0.5*n*(2*radius-dist);
-                                        }
-                                    }
+    for(int row = 1; row < (WIDTH/CELL_SIZE)-1; row++){
+        for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
+            for(int dx = -1; dx <= 1; dx++){
+                for(int dy = -1; dy <= 1; dy++){
+                    for(int b1 = 0; b1 < grid[row+dx][cell+dy].size(); b1++){
+                        for(int b2 = 0; b2 < grid[row][cell].size(); b2++){
+                            if(grid[row+dx][cell+dy][b1].pos != grid[row][cell][b2].pos){
+                                olc::vf2d axis = grid[row+dx][cell+dy][b1].pos-grid[row][cell][b2].pos;
+                                float dist = axis.mag();
+                                if(dist < 2*radius){
+                                    olc::vf2d n = axis.norm();
+                                    grid[row+dx][cell+dy][b1].pos += 0.5*n*(2*radius-dist);
+                                    grid[row][cell][b2].pos -= 0.5*n*(2*radius-dist);
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+    }
 }
 
 class Example : public olc::PixelGameEngine
