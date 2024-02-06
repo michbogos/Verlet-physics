@@ -14,15 +14,7 @@ struct Ball{
     Vector3 acc;
 };
 
-struct DistanceConstraint{
-    Ball* b1;
-    Ball* b2;
-    float dist;
-};
-
-
-
-int SUBDIV = 50;
+int SUBDIV = 48;
 float RADIUS = 7;
 float SPHERE_RADIUS = 0.15;
 float GRID_SIZE = 8.5;
@@ -31,10 +23,7 @@ int SUBSTEPS = 4;
 
 std::vector<Ball> balls;
 std::vector<std::vector<std::vector<std::vector<Ball*>>>> grid(SUBDIV, std::vector<std::vector<std::vector<Ball*>>>(SUBDIV, std::vector<std::vector<Ball*>>(SUBDIV, std::vector<Ball*>())));
-std::vector<std::vector<std::vector<std::vector<Ball*>>>> empty(SUBDIV, std::vector<std::vector<std::vector<Ball*>>>(SUBDIV, std::vector<std::vector<Ball*>>(SUBDIV, std::vector<Ball*>())));
-
-std::vector<DistanceConstraint> distance_constraints;
-
+// std::vector<std::vector<int>> full;
 
 void collide(int start, int end){
     for(int x = start; x < end; x++){
@@ -103,7 +92,7 @@ int main(void)
             ClearBackground(RAYWHITE);
             DrawFPS(10, 10); 
             BeginMode3D(camera);
-                DrawSphereWires(Vector3Zero(), RADIUS, 50, 50, (Color){200, 200, 200, 100});
+                //DrawSphereWires(Vector3Zero(), RADIUS, 50, 50, (Color){200, 200, 200, 100});
                 for(int i = 0; i < balls.size(); i++){
                     DrawModel(sphere, balls[i].pos, SPHERE_RADIUS, WHITE);
                 }
@@ -114,39 +103,40 @@ int main(void)
         EndDrawing();
 
 
+        //Bounds
         for(int i = 0; i < SUBSTEPS; i++){
-            float dt = GetFrameTime()/SUBSTEPS;
-            //Constraints
-            for(DistanceConstraint constraint:distance_constraints){
-                float dist = Vector3Distance(constraint.b1->pos, constraint.b2->pos);
-                Vector3 n = Vector3Scale(Vector3Normalize(Vector3Subtract(constraint.b1->pos, constraint.b2->pos)), (constraint.dist-dist)*0.5);
-                constraint.b1->pos = Vector3Add(constraint.b1->pos, n);
-                constraint.b2->pos = Vector3Subtract(constraint.b2->pos, n);
-                
+        for(int i = 0; i < balls.size(); i++){
+            if(Vector3Distance(balls[i].pos, (Vector3){0,0,0})> RADIUS-SPHERE_RADIUS){
+                balls[i].pos = Vector3Scale(balls[i].pos, (RADIUS-SPHERE_RADIUS)/Vector3Distance(balls[i].pos, (Vector3){0, 0, 0}));
             }
-            //Bounds
-            for(int i = 0; i < balls.size(); i++){
-                if(Vector3Length(balls[i].pos)> RADIUS-SPHERE_RADIUS){
-                    balls[i].pos = Vector3Scale(balls[i].pos, (RADIUS-SPHERE_RADIUS)/Vector3Length(balls[i].pos));
-                }
-            }
-            // Integrate
-            //Spatial Hash
-            for(int i = 0; i < balls.size(); i++){
-                float x_adj = balls[i].pos.x + GRID_SIZE;
-                float y_adj = balls[i].pos.y + GRID_SIZE;
-                float z_adj = balls[i].pos.z + GRID_SIZE;
-                int x = (int)((float)x_adj/((float)2*GRID_SIZE/(float)SUBDIV));
-                int y = (int)((float)y_adj/((float)2*GRID_SIZE/(float)SUBDIV));
-                int z = (int)((float)z_adj/((float)2*GRID_SIZE/(float)SUBDIV));
-                grid[std::min(std::max(x, 0), SUBDIV-1)][std::min(std::max(y, 0), SUBDIV-1)][std::min(std::max(z, 0), SUBDIV-1)].push_back(&balls[i]);
+        }
+        // Integrate
+        float dt = GetFrameTime()/SUBSTEPS;
+        for(int i = 0 ; i < balls.size(); i++){
+            balls[i].acc.y -= 10;
+            Vector3 v = Vector3Subtract(balls[i].pos, balls[i].pos_prev);
+            balls[i].pos_prev = balls[i].pos;
+            balls[i].pos = Vector3Add(balls[i].pos, Vector3Add(v, Vector3Scale(balls[i].acc,  dt*dt)));
+            balls[i].acc = Vector3Zero();
+        }
 
-                // BeginDrawing();
-                //         char buf[255];
-                //         sprintf(buf, "x:%d, y:%d, z:%d, posx:%f, posy:%f, posz:%f", x, y, z, x_adj, y_adj, z_adj);
-                //         DrawText(buf, 100, 100, 20, BLACK);
-                // EndDrawing();
-            }
+
+        //Spatial Hash
+        for(int i = 0; i < balls.size(); i++){
+            float x_adj = balls[i].pos.x + GRID_SIZE;
+            float y_adj = balls[i].pos.y + GRID_SIZE;
+            float z_adj = balls[i].pos.z + GRID_SIZE;
+            int x = (int)((float)x_adj/((float)2*GRID_SIZE/(float)SUBDIV));
+            int y = (int)((float)y_adj/((float)2*GRID_SIZE/(float)SUBDIV));
+            int z = (int)((float)z_adj/((float)2*GRID_SIZE/(float)SUBDIV));
+            grid[std::min(std::max(x, 0), SUBDIV-1)][std::min(std::max(y, 0), SUBDIV-1)][std::min(std::max(z, 0), SUBDIV-1)].push_back(&balls[i]);
+
+            // BeginDrawing();
+            //         char buf[255];
+            //         sprintf(buf, "x:%d, y:%d, z:%d, posx:%f, posy:%f, posz:%f", x, y, z, x_adj, y_adj, z_adj);
+            //         DrawText(buf, 100, 100, 20, BLACK);
+            // EndDrawing();
+        }
 
         //Collide
             std::thread t1(collide, 1, SUBDIV/8);
@@ -181,41 +171,24 @@ int main(void)
             // }
 
             //clear vector
-            // for(int i = 0; i < grid.size(); i++){
-            //     for(int j = 0; j < grid.size(); j ++){
-            //         for(int k = 0; k < grid.size(); k++){
-            //             grid[i][j][k].clear();
-            //         }
-            //     }
-            // }
-            grid = empty;
-            
-            for(int i = 0 ; i < balls.size(); i++){
-                balls[i].acc.y -= 10;
-                Vector3 v = Vector3Subtract(balls[i].pos, balls[i].pos_prev);
-                balls[i].pos_prev = balls[i].pos;
-                balls[i].pos = Vector3Add(balls[i].pos, Vector3Add(v, Vector3Scale(balls[i].acc,  dt*dt)));
-                balls[i].acc = Vector3Zero();
+            for(int i = 0; i < grid.size(); i++){
+                for(int j = 0; j < grid.size(); j ++){
+                    for(int k = 0; k < grid.size(); k++){
+                        grid[i][j][k].clear();
+                    }
+                }
             }
-
-
         }
 
         //Handle Input
         if(IsKeyPressed(KEY_SPACE)){
-            for(int i = 0; i < 10; i++){
-                balls.push_back({(Vector3){i*0.32, 0, 0}, (Vector3){i*0.32, 0, 0}, Vector3Zero()});
+            for(float i = -2.0f; i < 3.0f; i+=0.5f){
+                for(float j = -2.0f; j < 3.0f; j+=0.5f){
+                    for(float k = -2.0f; k < 3.0f; k+=0.5f){
+                        balls.push_back({(Vector3){i, j, k}, (Vector3){i, j, k}, Vector3Zero()});
+                    }
+                }
             }
-            for(int i = 0; i < 10; i++){
-                distance_constraints.push_back({&balls[i], &balls[i+1], 0.32});
-            }
-            // for(float i = -2.0f; i < 3.0f; i+=0.5f){
-            //     for(float j = -2.0f; j < 3.0f; j+=0.5f){
-            //         for(float k = -2.0f; k < 3.0f; k+=0.5f){
-            //             balls.push_back({(Vector3){i, j, k}, (Vector3){i, j, k}, Vector3Zero()});
-            //         }
-            //     }
-            // }
         }
 
         if(IsKeyDown(KEY_W)){
