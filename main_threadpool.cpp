@@ -4,14 +4,22 @@
 #include<vector>
 #include<list>
 #include<thread>
+#include<queue>
+#include <condition_variable>
+#include <iostream>
+#include <mutex>
+#include <string>
+#include"threadpool.h"
 
-#define SUBSTEPS 16
+ThreadPool pool(12);
+
+#define SUBSTEPS 8
 #define SUB_COEFF 1/SUBSTEPS/SUBSTEPS
-#define CELL_SIZE 8
+#define CELL_SIZE 10
 #define WIDTH 1000
 #define HEIGHT 1000
 
-constexpr int radius = 2;
+constexpr float radius = 2;
 float frame = 0;
 
 struct Ball{
@@ -22,6 +30,30 @@ struct Ball{
 };
 
 std::vector<std::vector<std::vector<Ball>>> grid(WIDTH/CELL_SIZE, std::vector<std::vector<Ball>>(HEIGHT/CELL_SIZE, std::vector<Ball>()));
+
+void collide(int start, int end){
+            for(int row = start; row < end; row++){
+                        for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
+                            for(int dx = -1; dx <= 1; dx++){
+                                for(int dy = -1; dy <= 1; dy++){
+                                    for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
+                                        for(auto b2 = grid[row][cell].begin(); b2 != grid[row][cell].end(); b2++){
+                                            if(b1->pos != b2->pos){
+                                                olc::vf2d axis = b1->pos-b2->pos;
+                                                float dist = axis.mag();
+                                                if(dist < 2*radius){
+                                                    olc::vf2d n = axis.norm();
+                                                    b1->pos += 0.5*n*(2*radius-dist);
+                                                    b2->pos -= 0.5*n*(2*radius-dist);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } 
+        }
 
 void collide1(){
     for(int row = 1; row < (WIDTH/CELL_SIZE/2); row++){
@@ -146,21 +178,28 @@ public:
                     }
                 }
             }
-            collideMP();
-
+            std::vector<std::future<void>> res;
+            res.push_back(pool.enqueue(collide, 1, WIDTH/CELL_SIZE*1/10));
+            for(int i = 1; i < 9; i++){
+                res.push_back(pool.enqueue(collide, WIDTH/CELL_SIZE*(i/10), WIDTH/CELL_SIZE*(i+1)/10));
+            }
+            res.push_back(pool.enqueue(collide, WIDTH/CELL_SIZE*(9/10), WIDTH/CELL_SIZE-1));
+            for(int i = 0; i < 10; i++){
+                res[i].get();
+            }
             // for(int row = 1; row < (WIDTH/CELL_SIZE)-1; row++){
             //     for(int cell = 1; cell < (HEIGHT/CELL_SIZE)-1; cell++){
             //         for(int dx = -1; dx <= 1; dx++){
             //             for(int dy = -1; dy <= 1; dy++){
-            //                 for(int b1 = 0; b1 < grid[row+dx][cell+dy].size(); b1++){
-            //                     for(int b2 = 0; b2 < grid[row][cell].size(); b2++){
-            //                         if(grid[row+dx][cell+dy][b1].pos != grid[row][cell][b2].pos){
-            //                             olc::vf2d axis = grid[row+dx][cell+dy][b1].pos-grid[row][cell][b2].pos;
+            //                 for(auto b1 = grid[row+dx][cell+dy].begin(); b1 != grid[row+dx][cell+dy].end(); b1++){
+            //                     for(auto b2 = grid[row][cell].begin(); b2 != grid[row][cell].end(); b2++){
+            //                         if(b1->pos != b2->pos){
+            //                             olc::vf2d axis = b1->pos-b2->pos;
             //                             float dist = axis.mag();
             //                             if(dist < 2*radius){
             //                                 olc::vf2d n = axis.norm();
-            //                                 grid[row+dx][cell+dy][b1].pos += 0.5*n*(2*radius-dist);
-            //                                 grid[row][cell][b2].pos -= 0.5*n*(2*radius-dist);
+            //                                 b1->pos += 0.5*n*(2*radius-dist);
+            //                                 b2->pos -= 0.5*n*(2*radius-dist);
             //                             }
             //                         }
             //                     }
@@ -198,8 +237,11 @@ public:
         }
         frame += fElapsedTime;
 
-        if(frame >= 0.6){
-            grid[(WIDTH-100+(2*radius))/CELL_SIZE][100/CELL_SIZE].push_back({{WIDTH-100, 100}, {(WIDTH-100.1), 100.1}, {0, 0}, {(WIDTH-100+(2*radius))/CELL_SIZE, 100/CELL_SIZE}});
+        if(frame >= 0.3){
+            printf("%f FPS @ %d objects\n", 1/fElapsedTime, counter);
+            for(int i = 0; i < 1; i++){
+                grid[(WIDTH-100+(2*radius*i))/CELL_SIZE][100/CELL_SIZE].push_back({{WIDTH-100+(2*radius*i), 100}, {(WIDTH-99.5)+(2*radius*i), 99.5}, {0, 0}, {(WIDTH-100+(2*radius*i))/CELL_SIZE, 100/CELL_SIZE}});
+            }
         }
 		return true;
     }
@@ -209,7 +251,17 @@ public:
 int main()
 {
 	Example demo;
+    // std::vector<std::thread> threads;
+    // for(int i = 0; i < 1; i++){
+    //     threads.push_back(std::thread(collide));
+    // }
 	if (demo.Construct(WIDTH, HEIGHT, 1, 1))
 		demo.Start();
+    // for(int i = 0 ; i<20; i++){
+    //     task_queue.push({0, 0});
+    // }
+    // for(int i = 0 ; i< 10; i++){
+    //     threads[i].join();
+    // }
 	return 0;
 }
