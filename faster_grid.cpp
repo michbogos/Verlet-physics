@@ -11,7 +11,7 @@
 
 #define SUBSTEPS 16
 #define SUB_COEFF 1/SUBSTEPS/SUBSTEPS
-#define CELL_SIZE 5
+#define CELL_SIZE 50
 #define WIDTH 1000
 #define HEIGHT 1000
 
@@ -29,7 +29,7 @@ std::vector<Ball> particles;
 std::vector<int> start_indices(1, 0);
 
 unsigned long long spatial_hash(olc::vf2d pos, float grid_size){
-    return (unsigned long long)((int)(pos.x/grid_size))* 92837111^(unsigned long long)((int)(pos.y/grid_size))*9737777;
+    return (unsigned long long)((int)(pos.x/grid_size))* 92837111^(unsigned long long)((int)(pos.y/grid_size))*689287499;
 }
 
 void collide(){
@@ -153,9 +153,7 @@ public:
 
         start_indices.push_back(particles.size());
 
-        if(particles.size()>1){
-            collide();
-            }
+        collide();
         
         }
 
@@ -165,7 +163,7 @@ public:
         std::sort(std::execution::par_unseq, particles.begin(), particles.end(), [](Ball const &a, Ball const &b) {
         return a.spatial_lookup < b.spatial_lookup; });
 
-        if(frame%100==0){
+        if(frame%30==0){
            particles.push_back({{300, 300}, {299.5, 299.9}, {0, 0}, (spatial_hash({300, 300}, CELL_SIZE)%(particles.size()+1))});
         }
         
