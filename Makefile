@@ -13,5 +13,8 @@ run: main.cpp
 web: 3d.cpp
 	em++ -o game.html 3d.cpp -Os  -L. ./libraylib.a -s ASYNCIFY -s USE_GLFW=3 -I ./ -DPLATFORM_WEB --preload-file basic.fs --preload-file basic.vs -sASSERTIONS
 
+hashgrid: hashgrid.cpp
+	g++ hashgrid.cpp -o verlet -Ofast -fopenmp -std=c++17 -ltbb -Wall -Wextra -pedantic -lX11 -lGL -lpthread -lpng -lstdc++fs -march=native -mtune=native -funroll-loops -fno-signed-zeros -fno-trapping-math -fopenmp -D_GLIBCXX_PARALLEL
+
 clean:
 	rm -rf verlet
