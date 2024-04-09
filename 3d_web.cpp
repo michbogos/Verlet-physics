@@ -79,6 +79,14 @@ int main(void)
 
     int frame = 0;
 
+    for(float i = -5.0f; i < 5.0f; i+=1){
+                for(float j = -5.0f; j < 5.0f; j+=1){
+                    for(float k = -5.0f; k < 5.0f; k+=1){
+                        balls.push_back({(Vector3){i, j, k}, (Vector3){i, j, k}, Vector3Zero()});
+                    }
+                }
+            }
+
     // Image tex = LoadImage(const char *fileName);   
 
     while (!WindowShouldClose())
@@ -103,6 +111,7 @@ int main(void)
             char s[255];
             snprintf(s, 255, "%lu", balls.size());
             DrawText(s, 10, 40, 20, GREEN);
+            DrawText("Press space to add spheres", 10, 70, 20, GRAY);
         EndDrawing();
 
 
@@ -168,25 +177,25 @@ int main(void)
         }
 
         //Handle Input
-        if(IsKeyPressed(KEY_SPACE)){
-            for(float i = -2.0f; i < 3.0f; i+=0.5f){
-                for(float j = -2.0f; j < 3.0f; j+=0.5f){
-                    for(float k = -2.0f; k < 3.0f; k+=0.5f){
+        if(IsKeyDown(KEY_SPACE)){
+            for(float i = -1.0f; i < 1.0f; i+=1){
+                for(float j = -1.0f; j < 1.0f; j+=1){
+                    for(float k = -1.0f; k < 1.0f; k+=1){
                         balls.push_back({(Vector3){i, j, k}, (Vector3){i, j, k}, Vector3Zero()});
                     }
                 }
             }
         }
 
-        if(frame%100 == 0){
-            for(float i = -2.0f; i < 3.0f; i+=1){
-                for(float j = -2.0f; j < 3.0f; j+=1){
-                    for(float k = -2.0f; k < 3.0f; k+=1){
-                        balls.push_back({(Vector3){i, j, k}, (Vector3){i, j, k}, Vector3Zero()});
-                    }
-                }
-            }
-        }
+        // if(frame%100 == 0){
+        //     for(float i = -2.0f; i < 3.0f; i+=1){
+        //         for(float j = -2.0f; j < 3.0f; j+=1){
+        //             for(float k = -2.0f; k < 3.0f; k+=1){
+        //                 balls.push_back({(Vector3){i, j, k}, (Vector3){i, j, k}, Vector3Zero()});
+        //             }
+        //         }
+        //     }
+        // }
 
         if(IsKeyDown(KEY_W)){
             camera.position.z -= 0.1;

@@ -9,7 +9,7 @@
 <body>
 
     <!-- Create the canvas that the C++ code will draw into -->
-    <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    <center><canvas tabindex=-1 id="canvas" oncontextmenu="event.preventDefault()"></canvas></center>
 
     <!-- Allow the C++ to access the canvas element --> 
     <script type='text/javascript'>
@@ -24,3 +24,6 @@
 </body>
 
 </html>
+<script>
+    document.getElementById("canvas").focus()
+</script>
